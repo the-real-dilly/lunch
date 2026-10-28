@@ -44,6 +44,7 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
+  body { height: 100dvh; }
   body {
     background: var(--bg);
     color: var(--ink);
@@ -52,6 +53,8 @@
     flex-direction: column;
   }
   button, input { font: inherit; color: inherit; }
+  button, summary, label, select { touch-action: manipulation; }
+  html { -webkit-text-size-adjust: 100%; }
   :focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 
   #map { flex: 1 1 auto; min-height: 42dvh; background: var(--bg); }
@@ -63,9 +66,10 @@
     overflow-y: auto;
     background: var(--panel);
     border-top: 1px solid var(--line);
-    padding-block: 16px calc(16px + env(safe-area-inset-bottom, 0px));
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    --gl: max(16px, env(safe-area-inset-left, 0px));
+    --gr: max(16px, env(safe-area-inset-right, 0px));
+    padding: 16px var(--gr) 0 var(--gl);
+    overscroll-behavior: contain;
     display: flex;
     flex-direction: column;
     gap: 18px;
@@ -78,8 +82,9 @@
       max-height: none;
       border-top: 0;
       border-right: 1px solid var(--line);
-      padding-block: 24px;
+      padding-top: 24px;
     }
+    .opts-toggle { display: none !important; }
   }
 
   h1 {
@@ -151,7 +156,8 @@
     width: 100%;
     border: 0;
     border-radius: 10px;
-    padding: 15px 16px;
+    padding: 14px 16px;
+    min-height: 52px;
     background: var(--hi);
     color: var(--hi-ink);
     font: 700 18px/1 var(--font-display);
@@ -200,6 +206,48 @@
   #history-box { display: flex; flex-direction: column; gap: 6px; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: inherit; }
 
+  .setup { display: flex; flex-direction: column; gap: 18px; }
+  .pickbar {
+    position: sticky; bottom: 0; z-index: 5;
+    margin-inline: calc(-1 * var(--gl)) calc(-1 * var(--gr));
+    padding: 10px var(--gr) calc(12px + env(safe-area-inset-bottom, 0px)) var(--gl);
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .pickbar .status { font-size: 13px; min-height: 0; }
+  .pickbar .status:empty { display: none; }
+  .pickrow { display: flex; gap: 10px; align-items: stretch; }
+  .pickrow .pick { flex: 1; }
+  .opts-toggle {
+    flex: 0 0 52px; display: grid; place-items: center;
+    border: 1.5px solid var(--ink); border-radius: 10px; background: transparent; cursor: pointer;
+  }
+  .opts-toggle svg { transition: transform 150ms; }
+  .opts-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+  @media (max-width: 859px) {
+    .setup.is-collapsed { display: none; }
+    h1 { font-size: 26px; }
+    .panel { gap: 16px; }
+  }
+  /* iOS zooms the page when a field under 16px gets focus */
+  input[type="search"], select { font-size: 16px; }
+  /* Finger-sized targets */
+  @media (pointer: coarse) {
+    .btn { min-height: 44px; }
+    .cuis-head .btn, .result .links .btn { min-height: 40px; }
+    .chip { min-height: 38px; padding: 6px 12px; }
+    .opts { gap: 4px 18px; }
+    .opts label { min-height: 40px; }
+    .opts input { width: 22px; height: 22px; }
+    select, input[type="search"] { min-height: 44px; }
+    .more summary { padding: 10px 0; }
+    .radius input { height: 34px; }
+    .result .links a { padding: 8px 0; }
+    .linkbtn { padding: 8px 0; }
+    .leaflet-touch .leaflet-bar a { width: 40px; height: 40px; line-height: 40px; }
+  }
+
   .leaflet-container { font-family: var(--font-body); }
   .leaflet-tooltip { font-family: var(--font-body); }
   .leaflet-top.leaflet-left { top: 4px; }
@@ -214,6 +262,7 @@
 <div id="map" role="application" aria-label="Map. Highlight the area you want to pick a restaurant from."></div>
 
 <aside class="panel">
+<div class="setup" id="setup">
   <header>
     <h1>Lunch <mark>Roulette</mark></h1>
     <p class="lede">Highlight the area you're willing to go to. We'll pick the restaurant so nobody has to.</p>
@@ -279,11 +328,11 @@
     </div>
   </section>
 
+</div>
+
   <section class="step" aria-labelledby="s4">
     <h2 id="s4"><span class="n">4</span>Pick</h2>
     <div class="row" id="retry" hidden><button class="btn" type="button">Try again</button></div>
-    <button class="pick" id="pick" type="button" disabled>Pick a restaurant</button>
-    <p class="status" id="pick-note" aria-live="polite"></p>
     <p class="left" id="left"></p>
     <div class="result" id="result" hidden aria-live="polite">
       <div class="tags"><span class="tag" id="r-cuisine"></span><span class="tag" id="r-open" hidden></span></div>
@@ -303,6 +352,15 @@
     </div>
     <p class="left" id="veto-row" hidden><span id="veto-count"></span> · <button class="linkbtn" type="button" id="veto-reset">Show them again</button></p>
   </section>
+  <div class="pickbar">
+    <p class="status" id="pick-note" aria-live="polite"></p>
+    <div class="pickrow">
+      <button class="opts-toggle" id="toggle-setup" type="button" aria-expanded="true" aria-controls="setup" aria-label="Show or hide area and filter options">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+      </button>
+      <button class="pick" id="pick" type="button" disabled>Pick a restaurant</button>
+    </div>
+  </div>
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -1027,6 +1085,11 @@
     } else {
       done("Couldn't copy");
     }
+  });
+
+  $("toggle-setup").addEventListener("click", function () {
+    var collapsed = $("setup").classList.toggle("is-collapsed");
+    this.setAttribute("aria-expanded", String(!collapsed));
   });
 
   setMode("radius");
