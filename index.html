@@ -42,6 +42,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
   body {
     background: var(--bg);
@@ -142,7 +143,7 @@
   .status { margin: 0; color: var(--muted); min-height: 1.45em; }
   .status.warn { color: var(--pin); }
 
-  .opts { display: flex; gap: 16px; flex-wrap: wrap; }
+  .opts { display: flex; gap: 8px 16px; flex-wrap: wrap; }
   .opts label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
   .opts input { accent-color: var(--ink); width: 16px; height: 16px; }
 
@@ -178,6 +179,26 @@
   .result a { color: var(--ink); font-weight: 700; text-underline-offset: 3px; }
   .result.spinning .name { opacity: 0.55; }
   .left { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .result .tag.yes { background: #bfe8c8; color: #123d1e; }
+  .result .tag.no { background: #f6c9c2; color: #5a1a10; }
+  @media (prefers-color-scheme: dark) {
+    .result .tag.yes { background: #1f4a2b; color: #d3f3da; }
+    .result .tag.no { background: #5a2a24; color: #ffd9d3; }
+  }
+  .sub { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .hint { margin: 0; color: var(--muted); font-size: 13px; }
+  .more summary { cursor: pointer; font-weight: 500; }
+  .more-body { display: flex; flex-direction: column; gap: 12px; padding-top: 10px; }
+  .field { display: flex; align-items: center; gap: 8px; }
+  select { font: inherit; color: inherit; background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; flex: 1; }
+  .cuis-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .cuis-head .seg { display: inline-flex; gap: 4px; margin-left: auto; }
+  .cuis-head .btn, .result .links .btn { padding: 5px 9px; font-size: 13px; }
+  .chip { padding: 5px 10px; font-size: 13px; border-radius: 999px; }
+  #history-box { display: flex; flex-direction: column; gap: 6px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--ink); text-decoration: underline; cursor: pointer; font-size: inherit; }
 
   .leaflet-container { font-family: var(--font-body); }
   .leaflet-tooltip { font-family: var(--font-body); }
@@ -224,21 +245,62 @@
   </section>
 
   <section class="step" aria-labelledby="s3">
-    <h2 id="s3"><span class="n">3</span>Pick</h2>
-    <div class="opts">
-      <label><input type="checkbox" id="t-restaurant" checked> Restaurants</label>
-      <label><input type="checkbox" id="t-fast_food"> Fast food</label>
-      <label><input type="checkbox" id="t-cafe"> Cafés</label>
+    <h2 id="s3"><span class="n">3</span>Filter</h2>
+    <div class="opts" id="types" role="group" aria-label="Place types"></div>
+    <details class="more">
+      <summary>More filters</summary>
+      <div class="more-body">
+        <label class="field">Hours
+          <select id="open-sel">
+            <option value="any">Any time</option>
+            <option value="now">Open now (or unknown)</option>
+            <option value="known">Open now (known hours only)</option>
+          </select>
+        </label>
+        <div class="opts" id="diets" role="group" aria-label="Dietary needs"></div>
+        <div class="opts">
+          <label><input type="checkbox" id="t-takeaway"> Takeaway</label>
+          <label><input type="checkbox" id="t-outdoor"> Outdoor seating</label>
+          <label><input type="checkbox" id="t-nochain"> Skip chains</label>
+        </div>
+        <p class="hint">Hours use your device's clock. Dietary, takeaway and chain info is added by OpenStreetMap volunteers, so places missing it are hidden when you use these filters.</p>
+      </div>
+    </details>
+    <div id="cuisine-box" hidden>
+      <div class="cuis-head">
+        <span class="sub">Cuisine</span>
+        <span class="seg">
+          <button class="btn quiet" type="button" id="cm-only" aria-pressed="true">Only these</button>
+          <button class="btn quiet" type="button" id="cm-skip" aria-pressed="false">Skip these</button>
+        </span>
+        <button class="btn quiet" type="button" id="cuis-clear">Clear</button>
+      </div>
+      <div class="row" id="cuisines"></div>
     </div>
+  </section>
+
+  <section class="step" aria-labelledby="s4">
+    <h2 id="s4"><span class="n">4</span>Pick</h2>
+    <div class="row" id="retry" hidden><button class="btn" type="button">Try again</button></div>
     <button class="pick" id="pick" type="button" disabled>Pick a restaurant</button>
     <p class="left" id="left"></p>
     <div class="result" id="result" hidden aria-live="polite">
-      <span class="tag" id="r-cuisine"></span>
+      <div class="tags"><span class="tag" id="r-cuisine"></span><span class="tag" id="r-open" hidden></span></div>
       <h3 class="name" id="r-name"></h3>
       <p class="meta" id="r-addr"></p>
       <p class="meta" id="r-hours"></p>
+      <p class="meta" id="r-perks" hidden></p>
       <div class="links" id="r-links"></div>
+      <div class="links">
+        <button class="btn quiet" type="button" id="veto">Not this one, never show it</button>
+        <button class="btn quiet" type="button" id="share">Share</button>
+      </div>
     </div>
+    <div id="history-box" hidden>
+      <span class="sub">Earlier picks</span>
+      <div class="row" id="history"></div>
+    </div>
+    <p class="left" id="veto-row" hidden><span id="veto-count"></span> · <button class="linkbtn" type="button" id="veto-reset">Show them again</button></p>
   </section>
 </aside>
 
@@ -250,7 +312,8 @@
 
   var OVERPASS = [
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter"
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
   ];
   var MAX_SPAN_KM = 12;
   var M_PER_MILE = 1609.344;
@@ -275,10 +338,11 @@
   var handler = null;
   var area = null;          // { layer, test(lat, lon) -> bool }
   var center = null;
-  var places = [];          // places in the current area
+  var places = [];          // places in the current area that pass the filters
   var cache = {};           // bbox+types -> raw places
   var seen = {};            // ids already picked in this area
   var busy = false;
+  var reqId = 0;            // bumps on every lookup or reset so stale responses are ignored
 
   function setStatus(msg, warn) {
     statusEl.textContent = msg;
@@ -308,8 +372,17 @@
     dotsLayer.clearLayers();
     pickLayer.clearLayers();
     places = [];
+    allPlaces = [];
+    current = null;
+    history = [];
+    renderHistory();
     seen = {};
+    reqId++;
+    busy = false;
+    $("retry").hidden = true;
+    $("cuisine-box").hidden = true;
     $("result").hidden = true;
+    pickBtn.textContent = "Pick a restaurant";
     leftEl.textContent = "";
   }
 
@@ -328,9 +401,9 @@
     else setStatus("Tap points around the area, then tap the first point to close it.");
   }
 
-  function setArea(layer, test) {
+  function setArea(layer, test, ql) {
     if (area) map.removeLayer(area.layer);
-    area = { layer: layer, test: test };
+    area = { layer: layer, test: test, ql: ql };
     layer.addTo(map);
     clearResults();
     refreshPlaces();
@@ -343,7 +416,8 @@
     var r = radiusMeters();
     var layer = L.circle(center, Object.assign({ radius: r }, shapeStyle));
     var c = center;
-    setArea(layer, function (lat, lon) { return map.distance(c, L.latLng(lat, lon)) <= r; });
+    var ql = "(around:" + Math.round(r) + "," + c.lat.toFixed(6) + "," + c.lng.toFixed(6) + ")";
+    setArea(layer, function (lat, lon) { return map.distance(c, L.latLng(lat, lon)) <= r; }, ql);
   }
 
   function formatMiles(v) { return parseFloat(v).toFixed(1) + " mi"; }
@@ -376,7 +450,8 @@
     handler = null;
     var layer = e.layer;
     var ring = layer.getLatLngs()[0];
-    setArea(layer, function (lat, lon) { return pointInPolygon(lat, lon, ring); });
+    var ql = '(poly:"' + ring.map(function (q) { return q.lat.toFixed(6) + " " + q.lng.toFixed(6); }).join(" ") + '")';
+    setArea(layer, function (lat, lon) { return pointInPolygon(lat, lon, ring); }, ql);
   });
 
   function setMode(m) {
@@ -437,18 +512,273 @@
     }).catch(function () {});
   }
 
-  // ---------- Restaurant data (OpenStreetMap via Overpass) ----------
-  function selectedTypes() {
-    return ["restaurant", "fast_food", "cafe"].filter(function (t) { return $("t-" + t).checked; });
+  // ---------- Filters (remembered between visits) ----------
+  var TYPES = [
+    { id: "restaurant", label: "Restaurants", sel: '["amenity"="restaurant"]' },
+    { id: "fast_food", label: "Fast food", sel: '["amenity"="fast_food"]' },
+    { id: "cafe", label: "Cafés", sel: '["amenity"="cafe"]' },
+    { id: "bakery", label: "Bakeries & delis", sel: '["shop"~"^(bakery|deli)$"]' },
+    { id: "pub", label: "Pubs & bars", sel: '["amenity"~"^(pub|bar|biergarten)$"]' },
+    { id: "food_court", label: "Food courts", sel: '["amenity"="food_court"]' }
+  ];
+  var DIETS = [
+    { id: "vegetarian", label: "Vegetarian" },
+    { id: "vegan", label: "Vegan" },
+    { id: "halal", label: "Halal" },
+    { id: "kosher", label: "Kosher" },
+    { id: "gluten_free", label: "Gluten-free" }
+  ];
+  var K_FILTERS = "lunch-roulette.filters", K_VETO = "lunch-roulette.vetoed";
+
+  function readStore(k) {
+    try { var v = JSON.parse(localStorage.getItem(k)); return v && typeof v === "object" ? v : {}; }
+    catch (e) { return {}; }
+  }
+  function writeStore(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+  var saved = readStore(K_FILTERS);
+  var vetoed = readStore(K_VETO);
+  var typeIds = TYPES.map(function (t) { return t.id; });
+  var F = {
+    types: Array.isArray(saved.types) ? saved.types.filter(function (t) { return typeIds.indexOf(t) >= 0; }) : ["restaurant", "fast_food"],
+    open: ["any", "now", "known"].indexOf(saved.open) >= 0 ? saved.open : "any",
+    diet: saved.diet && typeof saved.diet === "object" ? saved.diet : {},
+    takeaway: !!saved.takeaway,
+    outdoor: !!saved.outdoor,
+    nochain: !!saved.nochain,
+    cuisMode: saved.cuisMode === "skip" ? "skip" : "only",
+    cuisine: []
+  };
+
+  function saveFilters() {
+    writeStore(K_FILTERS, {
+      types: F.types, open: F.open, diet: F.diet, takeaway: F.takeaway, outdoor: F.outdoor,
+      nochain: F.nochain, cuisMode: F.cuisMode, radius: parseFloat($("radius").value)
+    });
   }
 
+  var allPlaces = [];       // places inside the area, before filters
+  var current = null;       // place currently shown in the result card
+  var history = [];
+
+  // ---------- Opening hours (common OpenStreetMap formats) ----------
+  var DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+  function parseDays(s) {
+    var out = [false, false, false, false, false, false, false];
+    var parts = s.split(",");
+    for (var k = 0; k < parts.length; k++) {
+      var m = /^(Su|Mo|Tu|We|Th|Fr|Sa)(?:-(Su|Mo|Tu|We|Th|Fr|Sa))?$/.exec(parts[k].trim());
+      if (!m) return null;
+      var a = DAYS.indexOf(m[1]), b = m[2] ? DAYS.indexOf(m[2]) : a;
+      for (var i = a; ; i = (i + 1) % 7) { out[i] = true; if (i === b) break; }
+    }
+    return out;
+  }
+
+  function parseTimes(s) {
+    if (/^(off|closed)$/i.test(s)) return [];
+    var out = [];
+    var parts = s.split(",");
+    for (var k = 0; k < parts.length; k++) {
+      var m = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec(parts[k].trim());
+      if (!m) return null;
+      out.push([+m[1] * 60 + +m[2], +m[3] * 60 + +m[4]]);
+    }
+    return out;
+  }
+
+  // true = open, false = closed, null = unknown or too complicated to read.
+  // Uses the viewer's clock, so it's only right when they're in the same time zone as the place.
+  function isOpenNow(str) {
+    if (!str) return null;
+    if (str.trim() === "24/7") return true;
+    var now = new Date(), d = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    var open = false, carry = false;
+    var rules = str.split(";");
+    for (var i = 0; i < rules.length; i++) {
+      var r = rules[i].trim();
+      if (!r || /^PH\b/.test(r)) continue;
+      var m = /^([A-Za-z,\- ]*?)\s*((?:\d.*)|off|closed)?$/i.exec(r);
+      if (!m || !m[2]) return null;
+      var days = m[1].trim() ? parseDays(m[1].trim()) : [true, true, true, true, true, true, true];
+      var times = parseTimes(m[2].trim());
+      if (!days || !times) return null;
+      if (days[d]) {
+        open = times.some(function (t) { return t[0] < t[1] ? (mins >= t[0] && mins < t[1]) : mins >= t[0]; });
+      }
+      if (days[(d + 6) % 7] && times.some(function (t) { return t[1] <= t[0] && mins < t[1]; })) carry = true;
+    }
+    return carry || open;
+  }
+
+  // ---------- Filtering ----------
+  function cuisinesOf(t) {
+    return t.cuisine ? t.cuisine.split(";").map(function (c) { return c.trim().toLowerCase(); }).filter(Boolean) : [];
+  }
+  function isYes(v) { return v === "yes" || v === "only"; }
+
+  function matches(p) {
+    var t = p.tags;
+    if (vetoed[p.id]) return false;
+    if (F.nochain && (t.brand || t["brand:wikidata"])) return false;
+    if (F.takeaway && !isYes(t.takeaway)) return false;
+    if (F.outdoor && t.outdoor_seating !== "yes") return false;
+    for (var i = 0; i < DIETS.length; i++) {
+      if (F.diet[DIETS[i].id] && !isYes(t["diet:" + DIETS[i].id])) return false;
+    }
+    if (F.cuisine.length) {
+      var hit = cuisinesOf(t).some(function (c) { return F.cuisine.indexOf(c) >= 0; });
+      if (F.cuisMode === "only" ? !hit : hit) return false;
+    }
+    if (F.open !== "any") {
+      var o = isOpenNow(t.opening_hours);
+      if (o === false) return false;
+      if (o === null && F.open === "known") return false;
+    }
+    return true;
+  }
+
+  function tipEl(text) {   // Leaflet reads plain strings as HTML; place names are user-edited data
+    var s = document.createElement("span");
+    s.textContent = text;
+    return s;
+  }
+
+  function drawDots() {
+    dotsLayer.clearLayers();
+    var fill = getComputedStyle(document.documentElement).getPropertyValue("--dot").trim() || "#2f6f73";
+    places.forEach(function (p) {
+      L.circleMarker([p.lat, p.lon], { radius: 5, weight: 1.5, color: "#ffffff", fillColor: fill, fillOpacity: 0.95 })
+        .bindTooltip(tipEl(p.tags.name))
+        .on("click", function () { reveal(p); })
+        .addTo(dotsLayer);
+    });
+  }
+
+  function updateVetoRow() {
+    var n = Object.keys(vetoed).length;
+    $("veto-row").hidden = !n;
+    $("veto-count").textContent = n + " hidden by you";
+  }
+
+  function applyFilters() {
+    if (busy) return;
+    seen = {};
+    current = null;
+    pickLayer.clearLayers();
+    $("result").hidden = true;
+    leftEl.textContent = "";
+    pickBtn.textContent = "Pick a restaurant";
+    places = allPlaces.filter(matches);
+    drawDots();
+    updateVetoRow();
+    if (!allPlaces.length) {
+      setStatus("Nothing found in that area. Try a bigger one or add more place types.", true);
+    } else if (!places.length) {
+      setStatus(allPlaces.length + " places in your area, but none match your filters. Loosen one.", true);
+    } else if (places.length === allPlaces.length) {
+      setStatus(places.length + " place" + (places.length === 1 ? "" : "s") + " in your area.");
+    } else {
+      setStatus(places.length + " of " + allPlaces.length + " places match your filters.");
+    }
+    pickBtn.disabled = !places.length;
+  }
+
+  function buildCuisines() {
+    var counts = {};
+    allPlaces.forEach(function (p) {
+      cuisinesOf(p.tags).forEach(function (c) { counts[c] = (counts[c] || 0) + 1; });
+    });
+    F.cuisine = F.cuisine.filter(function (c) { return counts[c]; });
+    var names = Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || (a < b ? -1 : 1); }).slice(0, 18);
+    F.cuisine.forEach(function (c) { if (names.indexOf(c) < 0) names.push(c); });
+    var box = $("cuisines");
+    box.textContent = "";
+    names.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn chip";
+      b.setAttribute("aria-pressed", String(F.cuisine.indexOf(c) >= 0));
+      b.textContent = pretty(c) + " · " + counts[c];
+      b.addEventListener("click", function () {
+        var i = F.cuisine.indexOf(c);
+        if (i >= 0) F.cuisine.splice(i, 1); else F.cuisine.push(c);
+        b.setAttribute("aria-pressed", String(i < 0));
+        applyFilters();
+      });
+      box.appendChild(b);
+    });
+    $("cuisine-box").hidden = !names.length;
+  }
+
+  function syncModeButtons() {
+    $("cm-only").setAttribute("aria-pressed", String(F.cuisMode === "only"));
+    $("cm-skip").setAttribute("aria-pressed", String(F.cuisMode === "skip"));
+  }
+
+  // Build the filter controls
+  (function () {
+    var typesBox = $("types"), dietsBox = $("diets");
+    function check(label, on, onChange) {
+      var l = document.createElement("label"), i = document.createElement("input");
+      i.type = "checkbox";
+      i.checked = on;
+      i.addEventListener("change", function () { onChange(i.checked); });
+      l.appendChild(i);
+      l.appendChild(document.createTextNode(" " + label));
+      return l;
+    }
+    TYPES.forEach(function (t) {
+      typesBox.appendChild(check(t.label, F.types.indexOf(t.id) >= 0, function (on) {
+        var i = F.types.indexOf(t.id);
+        if (on && i < 0) F.types.push(t.id);
+        if (!on && i >= 0) F.types.splice(i, 1);
+        saveFilters();
+        if (area) { clearResults(); refreshPlaces(); }
+      }));
+    });
+    DIETS.forEach(function (d) {
+      dietsBox.appendChild(check(d.label, !!F.diet[d.id], function (on) {
+        F.diet[d.id] = on;
+        saveFilters(); applyFilters();
+      }));
+    });
+    [["t-takeaway", "takeaway"], ["t-outdoor", "outdoor"], ["t-nochain", "nochain"]].forEach(function (x) {
+      var el = $(x[0]);
+      el.checked = F[x[1]];
+      el.addEventListener("change", function () { F[x[1]] = el.checked; saveFilters(); applyFilters(); });
+    });
+    $("open-sel").value = F.open;
+    $("open-sel").addEventListener("change", function () { F.open = this.value; saveFilters(); applyFilters(); });
+    syncModeButtons();
+    $("cm-only").addEventListener("click", function () { F.cuisMode = "only"; syncModeButtons(); saveFilters(); applyFilters(); });
+    $("cm-skip").addEventListener("click", function () { F.cuisMode = "skip"; syncModeButtons(); saveFilters(); applyFilters(); });
+    $("cuis-clear").addEventListener("click", function () {
+      F.cuisine = [];
+      buildCuisines();
+      applyFilters();
+    });
+    $("veto-reset").addEventListener("click", function () {
+      vetoed = {};
+      writeStore(K_VETO, vetoed);
+      applyFilters();
+    });
+    if (typeof saved.radius === "number" && saved.radius >= 0.1 && saved.radius <= 3) {
+      $("radius").value = saved.radius;
+      $("radius-out").textContent = formatMiles(saved.radius);
+    }
+    $("radius").addEventListener("change", saveFilters);
+  })();
+
+  // ---------- Restaurant data (OpenStreetMap via Overpass) ----------
   function fetchOverpass(query) {
     var i = 0;
     function attempt() {
       if (i >= OVERPASS.length) return Promise.reject(new Error("all mirrors failed"));
       var url = OVERPASS[i++];
       var ctrl = new AbortController();
-      var timer = setTimeout(function () { ctrl.abort(); }, 30000);
+      var timer = setTimeout(function () { ctrl.abort(); }, 45000);
       return fetch(url, {
         method: "POST",
         body: "data=" + encodeURIComponent(query),
@@ -458,14 +788,18 @@
         clearTimeout(timer);
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
+      }).then(function (data) {
+        if (!data || !Array.isArray(data.elements)) throw new Error("bad response");
+        return data;
       }).catch(function () { clearTimeout(timer); return attempt(); });
     }
     return attempt();
   }
 
   function refreshPlaces() {
-    if (!area || busy) return;
-    var types = selectedTypes();
+    if (!area) return;
+    $("retry").hidden = true;
+    var types = TYPES.filter(function (t) { return F.types.indexOf(t.id) >= 0; });
     if (!types.length) { setStatus("Choose at least one place type below.", true); pickBtn.disabled = true; return; }
     var b = area.layer.getBounds();
     if (spanKm(b) > MAX_SPAN_KM) {
@@ -473,16 +807,16 @@
       pickBtn.disabled = true;
       return;
     }
-    var key = b.toBBoxString() + "|" + types.join(",");
+    var key = area.ql + "|" + types.map(function (t) { return t.id; }).join(",");
+    var token = ++reqId;
     busy = true;
     pickBtn.disabled = true;
     setStatus("Looking up places…");
 
     var load = cache[key] ? Promise.resolve(cache[key]) : (function () {
-      var bbox = [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()].join(",");
-      var q = "[out:json][timeout:25];(" + types.map(function (t) {
-        return 'nwr["amenity"="' + t + '"]["name"](' + bbox + ");";
-      }).join("") + ");out center tags 800;";
+      var q = "[out:json][timeout:40];(" + types.map(function (t) {
+        return "nwr" + t.sel + '["name"]' + area.ql + ";";
+      }).join("") + ");out center tags;";
       return fetchOverpass(q).then(function (data) {
         var list = data.elements.map(function (el) {
           var lat = el.lat != null ? el.lat : (el.center && el.center.lat);
@@ -495,31 +829,19 @@
     })();
 
     load.then(function (list) {
+      if (token !== reqId || !area) return;     // a newer request or a cleared area took over
       busy = false;
-      if (!area) return;
-      places = list.filter(function (p) { return area.test(p.lat, p.lon); });
-      dotsLayer.clearLayers();
-      places.forEach(function (p) {
-        L.circleMarker([p.lat, p.lon], {
-          radius: 5, weight: 1.5, color: "#ffffff", fillColor: getComputedStyle(document.documentElement).getPropertyValue("--dot").trim() || "#2f6f73", fillOpacity: 0.95
-        }).bindTooltip(p.tags.name).addTo(dotsLayer);
-      });
-      if (!places.length) {
-        setStatus("Nothing found in that area. Try a bigger one or add more place types.", true);
-        pickBtn.disabled = true;
-      } else {
-        setStatus(places.length + " place" + (places.length === 1 ? "" : "s") + " in your area.");
-        pickBtn.disabled = false;
-      }
+      allPlaces = list.filter(function (p) { return area.test(p.lat, p.lon); });
+      buildCuisines();
+      applyFilters();
     }).catch(function () {
+      if (token !== reqId) return;
       busy = false;
-      setStatus("Couldn't load restaurants right now. Wait a moment and try the area again.", true);
+      setStatus("Couldn't load restaurants right now. The map data servers may be busy.", true);
+      $("retry").hidden = false;
     });
   }
-
-  ["restaurant", "fast_food", "cafe"].forEach(function (t) {
-    $("t-" + t).addEventListener("change", function () { if (area) { clearResults(); refreshPlaces(); } });
-  });
+  $("retry").addEventListener("click", refreshPlaces);
 
   // ---------- Picking ----------
   function rand(n) {
@@ -544,32 +866,76 @@
     return [street, t["addr:city"]].filter(Boolean).join(", ");
   }
 
+  function dirUrl(p) { return "https://www.google.com/maps/dir/?api=1&destination=" + p.lat + "," + p.lon; }
+
+  function addLink(parent, href, text) {
+    var a = document.createElement("a");
+    a.href = href;
+    if (/^https?:/.test(href)) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+    a.textContent = text;
+    parent.appendChild(a);
+  }
+
   function show(p) {
     var t = p.tags;
-    var kind = t.cuisine ? pretty(t.cuisine) : pretty(t.amenity || "restaurant");
+    var kind = t.cuisine ? pretty(t.cuisine) : pretty(t.amenity || t.shop || "restaurant");
     $("r-cuisine").textContent = kind;
     $("r-name").textContent = t.name;
     $("r-addr").textContent = addressOf(t);
     $("r-addr").hidden = !addressOf(t);
     $("r-hours").textContent = t.opening_hours ? "Hours: " + t.opening_hours : "";
     $("r-hours").hidden = !t.opening_hours;
+
+    var o = isOpenNow(t.opening_hours), openEl = $("r-open");
+    openEl.hidden = o === null;
+    openEl.textContent = o ? "Open now" : "Closed right now";
+    openEl.className = "tag " + (o ? "yes" : "no");
+
+    var perks = DIETS.filter(function (d) { return isYes(t["diet:" + d.id]); }).map(function (d) { return d.label; });
+    if (isYes(t.takeaway)) perks.push("Takeaway");
+    if (t.outdoor_seating === "yes") perks.push("Outdoor seating");
+    $("r-perks").textContent = perks.join(" · ");
+    $("r-perks").hidden = !perks.length;
+
     var links = $("r-links");
     links.textContent = "";
-    var dir = document.createElement("a");
-    dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + p.lat + "," + p.lon;
-    dir.target = "_blank"; dir.rel = "noopener noreferrer";
-    dir.textContent = "Directions";
-    links.appendChild(dir);
+    addLink(links, dirUrl(p), "Directions");
     var site = t.website || t["contact:website"];
-    if (site && /^https?:\/\//i.test(site)) {
-      var w = document.createElement("a");
-      w.href = site; w.target = "_blank"; w.rel = "noopener noreferrer";
-      w.textContent = "Website";
-      links.appendChild(w);
-    }
+    if (site && /^https?:\/\//i.test(site)) addLink(links, site, "Website");
+    var phone = t.phone || t["contact:phone"];
+    if (phone && /^[+\d][\d\s().\-]{5,}$/.test(phone)) addLink(links, "tel:" + phone.replace(/[^\d+]/g, ""), "Call");
   }
 
-  pickBtn.addEventListener("click", function () {
+  function reveal(p) {
+    current = p;
+    show(p);
+    $("result").hidden = false;
+    $("result").classList.remove("spinning");
+    $("veto").disabled = false;
+    $("share").disabled = false;
+    pickLayer.clearLayers();
+    L.circleMarker([p.lat, p.lon], {
+      radius: 11, weight: 3, color: "#17262b", fillColor: "#e4452f", fillOpacity: 1
+    }).bindTooltip(tipEl(p.tags.name), { permanent: true, direction: "top", offset: [0, -10] }).addTo(pickLayer);
+    map.panTo([p.lat, p.lon], { animate: !reduceMotion });
+    $("result").scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+  }
+
+  function renderHistory() {
+    var box = $("history");
+    box.textContent = "";
+    history.forEach(function (p) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn chip";
+      b.textContent = p.tags.name;
+      b.addEventListener("click", function () { reveal(p); });
+      box.appendChild(b);
+    });
+    $("history-box").hidden = !history.length;
+  }
+
+  function pickOne() {
     if (!places.length || busy) return;
     var pool = places.filter(function (p) { return !seen[p.id]; });
     if (!pool.length) { seen = {}; pool = places.slice(); }
@@ -579,6 +945,9 @@
     var box = $("result");
     box.hidden = false;
     pickBtn.disabled = true;
+    current = null;
+    $("veto").disabled = true;
+    $("share").disabled = true;
     pickLayer.clearLayers();
 
     var run = Promise.resolve();
@@ -589,6 +958,7 @@
           var p = places[rand(places.length)];
           $("r-name").textContent = p.tags.name;
           $("r-cuisine").textContent = "…";
+          $("r-open").hidden = true; $("r-perks").hidden = true;
           $("r-addr").hidden = true; $("r-hours").hidden = true;
           $("r-links").textContent = "";
           await sleep(55 + i * 14);
@@ -597,20 +967,53 @@
     }
 
     run.then(function () {
-      box.classList.remove("spinning");
-      show(chosen);
-      L.circleMarker([chosen.lat, chosen.lon], {
-        radius: 11, weight: 3, color: "#17262b", fillColor: "#e4452f", fillOpacity: 1
-      }).bindTooltip(chosen.tags.name, { permanent: true, direction: "top", offset: [0, -10] }).addTo(pickLayer);
-      map.panTo([chosen.lat, chosen.lon], { animate: !reduceMotion });
+      reveal(chosen);
+      history = history.filter(function (h) { return h.id !== chosen.id; });
+      history.unshift(chosen);
+      history = history.slice(0, 6);
+      renderHistory();
       var remaining = places.filter(function (p) { return !seen[p.id]; }).length;
       leftEl.textContent = remaining
         ? remaining + " more before any repeats. Not feeling it? Pick again."
         : "That was the last unpicked one. The next pick starts over.";
       pickBtn.textContent = "Pick again";
       pickBtn.disabled = false;
-      box.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
     });
+  }
+  pickBtn.addEventListener("click", pickOne);
+
+  // "Not this one": hide it for good (until reset) and pick another
+  $("veto").addEventListener("click", function () {
+    if (!current) return;
+    vetoed[current.id] = true;
+    writeStore(K_VETO, vetoed);
+    var id = current.id;
+    history = history.filter(function (h) { return h.id !== id; });
+    renderHistory();
+    places = places.filter(function (p) { return p.id !== id; });
+    drawDots();
+    updateVetoRow();
+    current = null;
+    if (places.length) { pickOne(); return; }
+    $("result").hidden = true;
+    pickLayer.clearLayers();
+    pickBtn.disabled = true;
+    leftEl.textContent = "";
+    setStatus("You've ruled everything out. Loosen a filter or reset the hidden places.", true);
+  });
+
+  $("share").addEventListener("click", function () {
+    if (!current) return;
+    var btn = this, p = current;
+    var text = "Lunch: " + p.tags.name + (addressOf(p.tags) ? " (" + addressOf(p.tags) + ")" : "") + " " + dirUrl(p);
+    function done(msg) { btn.textContent = msg; setTimeout(function () { btn.textContent = "Share"; }, 1800); }
+    if (navigator.share) {
+      navigator.share({ title: "Lunch Roulette", text: text }).catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done("Copied"); }, function () { done("Couldn't copy"); });
+    } else {
+      done("Couldn't copy");
+    }
   });
 
   setMode("radius");
