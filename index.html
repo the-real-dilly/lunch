@@ -283,6 +283,7 @@
     <h2 id="s4"><span class="n">4</span>Pick</h2>
     <div class="row" id="retry" hidden><button class="btn" type="button">Try again</button></div>
     <button class="pick" id="pick" type="button" disabled>Pick a restaurant</button>
+    <p class="status" id="pick-note" aria-live="polite"></p>
     <p class="left" id="left"></p>
     <div class="result" id="result" hidden aria-live="polite">
       <div class="tags"><span class="tag" id="r-cuisine"></span><span class="tag" id="r-open" hidden></span></div>
@@ -347,6 +348,8 @@
   function setStatus(msg, warn) {
     statusEl.textContent = msg;
     statusEl.className = warn ? "status warn" : "status";
+    var note = $("pick-note");   // same message beside the Pick button, which is off-screen from step 2 on phones
+    if (note) { note.textContent = msg; note.className = warn ? "status warn" : "status"; }
   }
 
   // ---------- Geometry ----------
@@ -832,8 +835,14 @@
       if (token !== reqId || !area) return;     // a newer request or a cleared area took over
       busy = false;
       allPlaces = list.filter(function (p) { return area.test(p.lat, p.lon); });
-      buildCuisines();
-      applyFilters();
+      try {
+        buildCuisines();
+        applyFilters();
+      } catch (err) {   // never leave the user stuck: fall back to everything found
+        places = allPlaces.slice();
+        setStatus(places.length + " places found, but filtering hit a problem (" + err.message + ").", true);
+        pickBtn.disabled = !places.length;
+      }
     }).catch(function () {
       if (token !== reqId) return;
       busy = false;
@@ -977,7 +986,11 @@
         ? remaining + " more before any repeats. Not feeling it? Pick again."
         : "That was the last unpicked one. The next pick starts over.";
       pickBtn.textContent = "Pick again";
-      pickBtn.disabled = false;
+    }).catch(function (err) {
+      $("result").classList.remove("spinning");
+      setStatus("Couldn't show that pick (" + err.message + "). Tap Pick again.", true);
+    }).then(function () {
+      pickBtn.disabled = !places.length;   // always re-arm, even if showing the pick failed
     });
   }
   pickBtn.addEventListener("click", pickOne);
